@@ -1,6 +1,11 @@
 import type {
+  AuthMode,
   ChatModelPreference,
   GetChatModelPreferenceResponse,
+  OAuthAccessTokenResponse,
+  OAuthCompleteLoginResponse,
+  OAuthStartLoginResponse,
+  OAuthStatusResponse,
   SendMessagePayload,
   SendMessageResponse,
   SetChatModelPreferenceResponse
@@ -194,6 +199,14 @@ export interface ElectronAPI {
   };
   shell: {
     openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+  };
+  oauth: {
+    startLogin: (mode: AuthMode) => Promise<OAuthStartLoginResponse>;
+    completeLogin: (code: string, createKey?: boolean) => Promise<OAuthCompleteLoginResponse>;
+    cancel: () => Promise<{ success: boolean }>;
+    getStatus: () => Promise<OAuthStatusResponse>;
+    logout: () => Promise<{ success: boolean; error?: string }>;
+    getAccessToken: () => Promise<OAuthAccessTokenResponse>;
   };
   conversation: {
     list: () => Promise<ConversationListResponse>;

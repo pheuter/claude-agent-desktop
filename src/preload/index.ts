@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { ChatModelPreference, SendMessagePayload } from '../shared/types/ipc';
+import type { AuthMode, ChatModelPreference, SendMessagePayload } from '../shared/types/ipc';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -137,6 +137,15 @@ contextBridge.exposeInMainWorld('electron', {
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url)
+  },
+  oauth: {
+    startLogin: (mode: AuthMode) => ipcRenderer.invoke('oauth:start-login', mode),
+    completeLogin: (code: string, createKey?: boolean) =>
+      ipcRenderer.invoke('oauth:complete-login', code, createKey),
+    cancel: () => ipcRenderer.invoke('oauth:cancel'),
+    getStatus: () => ipcRenderer.invoke('oauth:get-status'),
+    logout: () => ipcRenderer.invoke('oauth:logout'),
+    getAccessToken: () => ipcRenderer.invoke('oauth:get-access-token')
   },
   conversation: {
     list: () => ipcRenderer.invoke('conversation:list'),
