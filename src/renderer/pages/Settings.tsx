@@ -57,6 +57,14 @@ function Settings({ onBack }: SettingsProps) {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isSavingApiKey, setIsSavingApiKey] = useState(false);
   const [apiKeySaveState, setApiKeySaveState] = useState<'idle' | 'success' | 'error'>('idle');
+  const [oauthStatus, setOAuthStatus] = useState<{
+    authenticated: boolean;
+    expiresAt: number | null;
+  } | null>(null);
+  const [oauthCode, setOAuthCode] = useState('');
+  const [isOAuthLoginInProgress, setIsOAuthLoginInProgress] = useState(false);
+  const [oauthLoginState, setOAuthLoginState] = useState<'idle' | 'success' | 'error'>('idle');
+  const [oauthErrorMessage, setOAuthErrorMessage] = useState('');
 
   useEffect(() => {
     // Load current workspace directory
@@ -89,6 +97,16 @@ function Settings({ onBack }: SettingsProps) {
       })
       .catch(() => {
         // ignore - will show as not configured
+      });
+
+    // Load OAuth status
+    window.electron.oauth
+      .getStatus()
+      .then((response) => {
+        setOAuthStatus(response);
+      })
+      .catch(() => {
+        // ignore - will show as not authenticated
       });
   }, []);
 
@@ -233,6 +251,87 @@ function Settings({ onBack }: SettingsProps) {
     }
   };
 
+  const handleOAuthLogin = async (mode: 'max' | 'console', createKey = false) => {
+    setIsOAuthLoginInProgress(true);
+    setOAuthLoginState('idle');
+    setOAuthErrorMessage('');
+
+    try {
+      const response = await window.electron.oauth.startLogin(mode);
+      if (!response.success) {
+        setOAuthErrorMessage(response.error || 'Failed to start OAuth login');
+        setOAuthLoginState('error');
+        setTimeout(() => setOAuthLoginState('idle'), 3000);
+        setIsOAuthLoginInProgress(false);
+        return;
+      }
+
+      // User needs to paste the code in the input field
+      // The login will be completed when they submit the code
+    } catch (error) {
+      setOAuthErrorMessage('Failed to start OAuth login');
+      setOAuthLoginState('error');
+      setTimeout(() => setOAuthLoginState('idle'), 3000);
+      setIsOAuthLoginInProgress(false);
+    }
+  };
+
+  const handleCompleteOAuthLogin = async (createKey = false) => {
+    if (!oauthCode.trim()) {
+      return;
+    }
+
+    setOAuthLoginState('idle');
+    setOAuthErrorMessage('');
+
+    try {
+      const response = await window.electron.oauth.completeLogin(oauthCode.trim(), createKey);
+      if (!response.success) {
+        setOAuthErrorMessage(response.error || 'Failed to complete OAuth login');
+        setOAuthLoginState('error');
+        setTimeout(() => setOAuthLoginState('idle'), 3000);
+        return;
+      }
+
+      if (response.mode === 'api-key' && response.apiKey) {
+        // API key was created via OAuth
+        const apiKeyResponse = await window.electron.config.setApiKey(response.apiKey);
+        setApiKeyStatus(apiKeyResponse.status);
+      }
+
+      setOAuthLoginState('success');
+      setOAuthCode('');
+      setIsOAuthLoginInProgress(false);
+
+      // Reload OAuth status
+      const statusResponse = await window.electron.oauth.getStatus();
+      setOAuthStatus(statusResponse);
+
+      setTimeout(() => setOAuthLoginState('idle'), 2000);
+    } catch (error) {
+      setOAuthErrorMessage('Failed to complete OAuth login');
+      setOAuthLoginState('error');
+      setTimeout(() => setOAuthLoginState('idle'), 3000);
+    }
+  };
+
+  const handleOAuthLogout = async () => {
+    try {
+      await window.electron.oauth.logout();
+      setOAuthStatus({ authenticated: false, expiresAt: null });
+    } catch (error) {
+      // ignore
+    }
+  };
+
+  const handleCancelOAuth = () => {
+    window.electron.oauth.cancel();
+    setIsOAuthLoginInProgress(false);
+    setOAuthCode('');
+    setOAuthLoginState('idle');
+    setOAuthErrorMessage('');
+  };
+
   const isFormLoading = isLoadingWorkspace || isLoadingDebugMode;
   const apiKeyPlaceholder = apiKeyStatus.lastFour ? `...${apiKeyStatus.lastFour}` : 'sk-ant-...';
 
@@ -343,6 +442,97 @@ function Settings({ onBack }: SettingsProps) {
                         )}
                       </div>
                     </div>
+                  </section>
+
+                  <div className="border-t border-neutral-200/80 dark:border-neutral-800" />
+
+                  {/* OAuth Login */}
+                  <section className="space-y-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-50">
+                        OAuth Login
+                      </h2>
+                      <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                        Log in with your Claude Pro/Max account or create an API key via OAuth.
+                      </p>
+                    </div>
+
+                    {oauthStatus?.authenticated ?
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50 px-4 py-3 dark:border-green-500/30 dark:bg-green-500/10">
+                          <div>
+                            <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                              Logged in via OAuth
+                            </p>
+                            <p className="text-xs text-green-700 dark:text-green-300">
+                              Using Claude Pro/Max credentials
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleOAuthLogout}
+                            className="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 hover:bg-red-50 dark:border-red-500/70 dark:text-red-200 dark:hover:border-red-400 dark:hover:bg-red-500/10"
+                          >
+                            Logout
+                          </button>
+                        </div>
+                      </div>
+                    : <div className="space-y-3">
+                        {!isOAuthLoginInProgress ?
+                          <div className="flex flex-wrap gap-3">
+                            <button
+                              onClick={() => handleOAuthLogin('max', false)}
+                              className="flex-1 rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                            >
+                              Login with Claude Pro/Max
+                            </button>
+                            <button
+                              onClick={() => handleOAuthLogin('console', true)}
+                              className="flex-1 rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition-colors hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                            >
+                              Create API Key via OAuth
+                            </button>
+                          </div>
+                        : <div className="space-y-3">
+                            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+                              A browser window has been opened. Please authorize the application and paste
+                              the authorization code below.
+                            </div>
+                            <input
+                              type="text"
+                              value={oauthCode}
+                              onChange={(e) => setOAuthCode(e.target.value)}
+                              placeholder="Paste authorization code here"
+                              className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 font-mono text-sm text-neutral-900 placeholder-neutral-400 transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:border-neutral-300"
+                            />
+                            <div className="flex flex-wrap items-center justify-end gap-3">
+                              <button
+                                onClick={handleCancelOAuth}
+                                className="rounded-full border border-neutral-200 px-5 py-2 text-sm font-semibold text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleCompleteOAuthLogin(false)}
+                                disabled={!oauthCode.trim()}
+                                className="rounded-full bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                              >
+                                Complete Login
+                              </button>
+                            </div>
+                          </div>
+                        }
+                        {oauthLoginState === 'success' && (
+                          <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                            OAuth login successful
+                          </p>
+                        )}
+                        {oauthLoginState === 'error' && (
+                          <p className="text-xs font-medium text-red-600 dark:text-red-400">
+                            {oauthErrorMessage || 'OAuth login failed'}
+                          </p>
+                        )}
+                      </div>
+                    }
                   </section>
 
                   <div className="border-t border-neutral-200/80 dark:border-neutral-800" />

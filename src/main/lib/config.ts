@@ -4,12 +4,14 @@ import { dirname, join, resolve } from 'path';
 import { app } from 'electron';
 
 import type { ChatModelPreference } from '../../shared/types/ipc';
+import type { OAuthTokens } from './oauth';
 
 export interface AppConfig {
   workspaceDir?: string;
   debugMode?: boolean;
   chatModelPreference?: ChatModelPreference;
   apiKey?: string;
+  oauthTokens?: OAuthTokens;
 }
 
 function getConfigPath(): string {
