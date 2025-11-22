@@ -7,11 +7,13 @@ import {
   buildClaudeSessionEnv,
   buildEnhancedPath,
   ensureWorkspaceDir,
+  getAnthropicBaseUrlStatus,
   getApiKeyStatus,
   getDebugMode,
   getWorkspaceDir,
   loadConfig,
   saveConfig,
+  setAnthropicBaseUrl,
   setApiKey
 } from '../lib/config';
 
@@ -87,6 +89,18 @@ export function registerConfigHandlers(): void {
     const normalized = apiKey?.trim() || null;
     setApiKey(normalized);
     return { success: true, status: getApiKeyStatus() };
+  });
+
+  // Base URL status (env vs local config)
+  ipcMain.handle('config:get-base-url-status', () => {
+    return { status: getAnthropicBaseUrlStatus() };
+  });
+
+  // Set or clear base URL stored in app config
+  ipcMain.handle('config:set-base-url', (_event, baseUrl?: string | null) => {
+    const normalized = baseUrl?.trim() || null;
+    setAnthropicBaseUrl(normalized);
+    return { success: true, status: getAnthropicBaseUrlStatus() };
   });
 
   // Get PATH environment variable info (for debug/dev section)

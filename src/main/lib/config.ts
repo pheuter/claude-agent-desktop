@@ -4,12 +4,15 @@ import { dirname, join, resolve } from 'path';
 import { app } from 'electron';
 
 import type { ChatModelPreference } from '../../shared/types/ipc';
+import type { OAuthTokens } from './oauth';
 
 export interface AppConfig {
   workspaceDir?: string;
   debugMode?: boolean;
   chatModelPreference?: ChatModelPreference;
   apiKey?: string;
+  anthropicBaseUrl?: string;
+  oauthTokens?: OAuthTokens;
 }
 
 function getConfigPath(): string {
@@ -55,6 +58,44 @@ export function setApiKey(apiKey: string | null): void {
     delete config.apiKey;
   }
   saveConfig(config);
+}
+
+export function getAnthropicBaseUrl(): string | null {
+  const envBaseUrl = process.env.ANTHROPIC_BASE_URL?.trim();
+  if (envBaseUrl) {
+    return envBaseUrl;
+  }
+
+  const storedBaseUrl = loadConfig().anthropicBaseUrl?.trim();
+  return storedBaseUrl || null;
+}
+
+export function setAnthropicBaseUrl(baseUrl: string | null): void {
+  const config = loadConfig();
+  if (baseUrl && baseUrl.trim()) {
+    config.anthropicBaseUrl = baseUrl.trim();
+  } else {
+    delete config.anthropicBaseUrl;
+  }
+  saveConfig(config);
+}
+
+export function getAnthropicBaseUrlStatus(): {
+  configured: boolean;
+  source: 'env' | 'local' | null;
+  url: string | null;
+} {
+  const envBaseUrl = process.env.ANTHROPIC_BASE_URL?.trim();
+  if (envBaseUrl) {
+    return { configured: true, source: 'env', url: envBaseUrl };
+  }
+
+  const storedBaseUrl = loadConfig().anthropicBaseUrl?.trim();
+  if (storedBaseUrl) {
+    return { configured: true, source: 'local', url: storedBaseUrl };
+  }
+
+  return { configured: false, source: null, url: null };
 }
 
 function getApiKeyLastFour(key: string | null | undefined): string | null {
