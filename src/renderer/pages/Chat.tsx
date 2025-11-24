@@ -532,7 +532,7 @@ export default function Chat() {
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-neutral-900">
       <TitleBar
-        onOpenHistory={() => setIsHistoryOpen(true)}
+        onOpenHistory={() => setIsHistoryOpen((prev) => !prev)}
         onNewChat={handleNewChatFromTitleBar}
       />
 

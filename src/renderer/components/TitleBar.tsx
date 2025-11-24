@@ -28,7 +28,7 @@ export default function TitleBar({ onOpenHistory, onNewChat }: TitleBarProps) {
                 aria-label="Open chat history"
               >
                 <History className="h-4 w-4" />
-                <span className="hidden sm:inline">Chat history</span>
+                <span className="hidden sm:inline">Chats</span>
               </button>
             )}
 

@@ -20,8 +20,8 @@ const projectDir = join(__dirname, '..');
 const resourcesDir = join(projectDir, 'resources');
 
 // Target versions
-const BUN_VERSION = '1.3.2';
-const UV_VERSION = '0.9.8';
+const BUN_VERSION = '1.3.3';
+const UV_VERSION = '0.9.11';
 const JQ_VERSION = '1.8.1';
 const PORTABLE_GIT_VERSION = '2.47.1'; // Git for Windows portable version
 const MSYS2_VERSION = 'latest'; // MSYS2 base system (includes bash, awk, sed, unix tools) - using latest release

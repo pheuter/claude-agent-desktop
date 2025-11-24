@@ -1,5 +1,5 @@
 import { Clock, MessageSquare, Plus, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Conversation } from '@/electron';
 
@@ -27,6 +27,13 @@ export default function ChatHistoryDrawer({
 }: ChatHistoryDrawerProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const relativeTimeFormatter = useMemo(
+    () =>
+      new Intl.RelativeTimeFormat(undefined, {
+        numeric: 'always'
+      }),
+    []
+  );
 
   const loadConversations = async () => {
     setIsLoading(true);
@@ -111,127 +118,146 @@ export default function ChatHistoryDrawer({
     }, {});
   }, [conversations]);
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const formatRelativeDate = useCallback(
+    (timestamp: number) => {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return '';
 
-    if (diffDays === 0) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-  };
+      const diffMs = Date.now() - date.getTime();
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+      if (diffMinutes < 60) {
+        const minutes = Math.max(1, diffMinutes);
+        return relativeTimeFormatter.format(-minutes, 'minute');
+      }
+
+      const diffHours = Math.floor(diffMinutes / 60);
+      if (diffHours < 24) {
+        return relativeTimeFormatter.format(-diffHours, 'hour');
+      }
+
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) {
+        return relativeTimeFormatter.format(-diffDays, 'day');
+      }
+
+      if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return relativeTimeFormatter.format(-weeks, 'week');
+      }
+
+      const months = Math.floor(diffDays / 30);
+      if (months < 12) {
+        return relativeTimeFormatter.format(-months, 'month');
+      }
+
+      const years = Math.floor(months / 12);
+      return relativeTimeFormatter.format(-years, 'year');
+    },
+    [relativeTimeFormatter]
+  );
 
   return (
     <>
-      {/* Backdrop */}
-      {isOpen && (
-        <div
-          className="fixed top-12 right-0 bottom-0 left-0 z-40 bg-black/20 dark:bg-black/40"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Drawer */}
       <div
-        className={`fixed top-12 left-0 z-50 h-[calc(100vh-3rem)] w-80 transform border-r border-neutral-200 bg-white shadow-xl transition-transform duration-300 ease-in-out dark:border-neutral-800 dark:bg-neutral-950 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-14 left-4 z-40 h-[calc(100vh-4rem)] w-[360px] max-w-[calc(100vw-2rem)] transition-all duration-300 ease-out ${
+          isOpen ?
+            'pointer-events-auto translate-x-0 opacity-100'
+          : 'pointer-events-none -translate-x-[calc(100%+1.5rem)] opacity-0'
         }`}
+        aria-hidden={!isOpen}
       >
-        <div className="flex h-full flex-col">
-          {/* Header */}
-          <div className="border-b border-neutral-200/70 px-4 py-3 dark:border-neutral-800/80">
+        <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white/70 p-4 shadow-[0_20px_60px_-36px_rgba(0,0,0,0.28)] backdrop-blur-2xl transition-all duration-300 ease-out dark:border-white/10 dark:bg-neutral-900/70 dark:shadow-black/50">
+          <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-white/50 via-white/20 to-transparent opacity-90 dark:from-white/5 dark:via-white/[0.02] dark:to-transparent dark:opacity-100" />
+          <div className="relative flex h-full flex-col gap-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-50">
-                  Resume a session
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+                  Resume a thread
                 </h2>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  Resume a thread or start fresh
+                  Pick up where you left off or start fresh
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-neutral-200/80 text-neutral-500 transition-colors hover:border-neutral-300 hover:text-neutral-700 dark:border-neutral-800 dark:text-neutral-400 dark:hover:border-neutral-700"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/80 text-neutral-600 transition-colors duration-200 hover:border-black/15 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:border-white/20 dark:hover:bg-white/10 dark:hover:text-neutral-50"
                 aria-label="Close drawer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
+
             <button
               onClick={handleNewChat}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+              className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-sm font-semibold text-neutral-900 transition-colors duration-200 hover:border-black/15 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-neutral-50 dark:hover:border-white/20 dark:hover:bg-white/10"
             >
-              <Plus className="h-4 w-4" />
-              Start new chat
+              <div className="absolute inset-0 bg-gradient-to-r from-black/[0.02] via-transparent to-transparent opacity-70 transition-opacity duration-200 group-hover:opacity-90 dark:from-white/5 dark:via-transparent dark:to-transparent" />
+              <Plus className="relative h-4 w-4" />
+              <span className="relative">Start new chat</span>
             </button>
-          </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto">
-            {isLoading ?
-              <div className="flex items-center justify-center p-8">
-                <div className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</div>
-              </div>
-            : conversations.length === 0 ?
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <MessageSquare className="mb-4 h-12 w-12 text-neutral-300 dark:text-neutral-600" />
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  No conversations yet
-                </p>
-                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                  Start a new chat to see it here
-                </p>
-              </div>
-            : <div className="p-2">
-                {conversations.map((conversation) => {
-                  const isActive = conversation.id === currentConversationId;
-                  return (
-                    <div
-                      key={conversation.id}
-                      onClick={() => {
-                        onLoadConversation(conversation.id);
-                        onClose();
-                      }}
-                      className={`group relative mb-2 cursor-pointer rounded-xl border px-3 py-3 transition-colors ${
-                        isActive ?
-                          'border-neutral-900 bg-neutral-900/5 dark:border-neutral-100/70 dark:bg-neutral-100/5'
-                        : 'border-transparent hover:border-neutral-200 hover:bg-neutral-50 dark:hover:border-neutral-700 dark:hover:bg-neutral-900/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                            {conversation.title}
+            <div className="flex-1 overflow-y-auto">
+              {isLoading ?
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</div>
+                </div>
+              : conversations.length === 0 ?
+                <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full border border-black/5 bg-white/80 text-neutral-400 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-white/5">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    No conversations yet
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Start a new chat to see it here
+                  </p>
+                </div>
+              : <div className="space-y-2">
+                  {conversations.map((conversation) => {
+                    const isActive = conversation.id === currentConversationId;
+                    return (
+                      <div
+                        key={conversation.id}
+                        onClick={() => {
+                          onLoadConversation(conversation.id);
+                          onClose();
+                        }}
+                        className={`group relative cursor-pointer rounded-lg border px-3 py-3 transition-colors duration-150 ${
+                          isActive ?
+                            'border-black/10 bg-white/90 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.1)] dark:border-white/15 dark:bg-white/10 dark:shadow-none'
+                          : 'border-black/5 bg-white/60 hover:border-black/10 hover:bg-white/80 dark:border-white/5 dark:bg-white/5 dark:hover:border-white/10 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                              {conversation.title}
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-xs text-neutral-600 dark:text-neutral-400">
+                              {conversationPreviews[conversation.id]}
+                            </p>
+                            <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-500">
+                              <Clock className="h-3 w-3" />
+                              <span>{formatRelativeDate(conversation.updatedAt)}</span>
+                            </div>
                           </div>
-                          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                            {conversationPreviews[conversation.id]}
-                          </p>
-                          <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
-                            <Clock className="h-3 w-3" />
-                            <span>{formatDate(conversation.updatedAt)}</span>
-                          </div>
+                          <button
+                            onClick={(e) => handleDelete(e, conversation.id)}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-transparent text-neutral-400 opacity-0 transition-colors duration-150 group-hover:opacity-100 hover:border-black/10 hover:bg-black/5 hover:text-neutral-700 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-neutral-200"
+                            aria-label="Delete conversation"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <button
-                          onClick={(e) => handleDelete(e, conversation.id)}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-transparent text-neutral-400 opacity-0 transition-colors group-hover:opacity-100 hover:border-neutral-200 hover:text-neutral-700 dark:hover:border-neutral-700 dark:hover:text-neutral-200"
-                          aria-label="Delete conversation"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            }
+                    );
+                  })}
+                </div>
+              }
+            </div>
           </div>
         </div>
       </div>
