@@ -1,11 +1,12 @@
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import electronUpdater from 'electron-updater';
 
 const { autoUpdater } = electronUpdater;
 
 let mainWindow: BrowserWindow | null = null;
 const updateFeedUrl = process.env.UPDATE_FEED_URL;
-const updatesConfigured = Boolean(updateFeedUrl);
+const hasCustomFeed = Boolean(updateFeedUrl);
+const updatesConfigured = hasCustomFeed || app.isPackaged;
 
 export interface UpdateInfo {
   version: string;
@@ -40,11 +41,14 @@ autoUpdater.autoDownload = false; // Don't auto-download, let user decide
 autoUpdater.autoInstallOnAppQuit = true; // Auto-install on quit after download
 
 // Configure update feed if provided
-if (updatesConfigured && updateFeedUrl) {
+if (updateFeedUrl) {
   autoUpdater.setFeedURL({
     provider: 'generic',
     url: updateFeedUrl
   });
+  console.log('Auto-update feed configured from UPDATE_FEED_URL');
+} else if (app.isPackaged) {
+  console.log('Using bundled auto-update configuration (GitHub releases)');
 } else {
   console.log('Auto-update feed not configured; skipping feed setup');
 }
@@ -182,6 +186,29 @@ function notifyStatusChange(): void {
 }
 
 export function checkForUpdates(): void {
+  const isDev = process.env.ELECTRON_RENDERER_URL !== undefined;
+
+  // Only check in production (not in dev mode)
+  if (isDev && !hasCustomFeed) {
+    console.log('Skipping update check in development mode');
+    currentStatus = {
+      ...currentStatus,
+      checking: false,
+      lastCheckComplete: true,
+      error: 'Update checks are disabled in development mode'
+    };
+    notifyStatusChange();
+    setTimeout(() => {
+      currentStatus = {
+        ...currentStatus,
+        lastCheckComplete: false,
+        error: null
+      };
+      notifyStatusChange();
+    }, 3000);
+    return;
+  }
+
   if (!updatesConfigured) {
     currentStatus = {
       ...currentStatus,
@@ -204,28 +231,6 @@ export function checkForUpdates(): void {
 
   // Don't check if already checking or downloading
   if (currentStatus.checking || currentStatus.downloading) {
-    return;
-  }
-
-  // Only check in production (not in dev mode)
-  if (process.env.ELECTRON_RENDERER_URL) {
-    console.log('Skipping update check in development mode');
-    // Still show feedback in dev mode
-    currentStatus = {
-      ...currentStatus,
-      checking: false,
-      lastCheckComplete: true,
-      error: 'Update checks are disabled in development mode'
-    };
-    notifyStatusChange();
-    setTimeout(() => {
-      currentStatus = {
-        ...currentStatus,
-        lastCheckComplete: false,
-        error: null
-      };
-      notifyStatusChange();
-    }, 3000);
     return;
   }
 

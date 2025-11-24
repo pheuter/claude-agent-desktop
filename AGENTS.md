@@ -56,7 +56,7 @@ bun run format    # Prettier
 - Workspace defaults to `~/Desktop/claude-agent` (change in Settings).
 - Anthropic API key can be provided via `ANTHROPIC_API_KEY` or stored locally in Settings.
 - Bundled tools: bun + uv for runtime execution, portable Git/MSYS2 for Windows.
-- Auto-updates: set `UPDATE_FEED_URL` to enable checks; otherwise updates stay disabled.
+- Auto-updates: packaged builds check GitHub releases for updates; set `UPDATE_FEED_URL` to override the feed if needed (e.g., staging).
 
 ## Workflow
 

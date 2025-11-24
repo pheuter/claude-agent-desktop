@@ -81,7 +81,14 @@
       "out/node_modules/@img/**/*",
       "out/.claude/**/*"
     ],
-    "publish": [],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "pheuter",
+        "repo": "claude-agent-desktop",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "target": [
         "zip"

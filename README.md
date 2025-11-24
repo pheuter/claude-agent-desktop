@@ -35,3 +35,7 @@ Pre-built binaries for **macOS** and **Windows** are available on the [Releases 
 bun install
 bun run dev      # builds skills, starts Electron + Vite
 ```
+
+## Auto-updates
+
+Packaged builds check this repository's GitHub Releases for updates via `electron-updater`. Set `GH_TOKEN` when running `electron-builder` to publish releases with update metadata, and optionally provide `UPDATE_FEED_URL` to point the app at a custom update server.
