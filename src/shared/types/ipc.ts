@@ -50,3 +50,30 @@ export interface ShellResponse {
   success: boolean;
   error?: string;
 }
+
+// OAuth types
+export type AuthMode = 'max' | 'console';
+
+export interface OAuthStartLoginResponse {
+  success: boolean;
+  authUrl?: string;
+  error?: string;
+}
+
+export interface OAuthCompleteLoginResponse {
+  success: boolean;
+  mode?: 'oauth' | 'api-key';
+  apiKey?: string;
+  error?: string;
+}
+
+export interface OAuthStatusResponse {
+  authenticated: boolean;
+  expiresAt: number | null;
+}
+
+export interface OAuthAccessTokenResponse {
+  success: boolean;
+  accessToken?: string | null;
+  error?: string;
+}

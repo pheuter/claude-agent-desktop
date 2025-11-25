@@ -5,6 +5,7 @@ import { app, BrowserWindow, Menu } from 'electron';
 import { registerChatHandlers } from './handlers/chat-handlers';
 import { registerConfigHandlers } from './handlers/config-handlers';
 import { registerConversationHandlers } from './handlers/conversation-handlers';
+import { registerOAuthHandlers } from './handlers/oauth-handlers';
 import { registerShellHandlers } from './handlers/shell-handlers';
 import { registerUpdateHandlers } from './handlers/update-handlers';
 import { buildEnhancedPath, ensureWorkspaceDir } from './lib/config';
@@ -98,6 +99,7 @@ app.whenReady().then(async () => {
 
   // Register all IPC handlers
   registerConfigHandlers();
+  registerOAuthHandlers();
   registerChatHandlers(() => mainWindow);
   registerConversationHandlers();
   registerShellHandlers();

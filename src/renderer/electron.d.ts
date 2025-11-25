@@ -191,9 +191,24 @@ export interface ElectronAPI {
       success: boolean;
       status: { configured: boolean; source: 'env' | 'local' | null; lastFour: string | null };
     }>;
+    getBaseUrlStatus: () => Promise<{
+      status: { configured: boolean; source: 'env' | 'local' | null; url: string | null };
+    }>;
+    setBaseUrl: (baseUrl?: string | null) => Promise<{
+      success: boolean;
+      status: { configured: boolean; source: 'env' | 'local' | null; url: string | null };
+    }>;
   };
   shell: {
     openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+  };
+  oauth: {
+    startLogin: (mode: AuthMode) => Promise<OAuthStartLoginResponse>;
+    completeLogin: (code: string, createKey?: boolean) => Promise<OAuthCompleteLoginResponse>;
+    cancel: () => Promise<{ success: boolean }>;
+    getStatus: () => Promise<OAuthStatusResponse>;
+    logout: () => Promise<{ success: boolean; error?: string }>;
+    getAccessToken: () => Promise<OAuthAccessTokenResponse>;
   };
   conversation: {
     list: () => Promise<ConversationListResponse>;
